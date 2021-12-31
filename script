@@ -1,0 +1,30 @@
+LOCALIZABLES=$(find * -name Localizable.strings)
+
+for file in $LOCALIZABLES; do
+
+  FILE_PATH="${SRCROOT}/${file}"
+
+  ALL_KEYS=$(cut -d = -f 1 "$FILE_PATH")
+
+  DUPLICATED_KEYS=$(echo "$ALL_KEYS" | sort | uniq -c | grep -v 1)
+
+  if [ -z "$DUPLICATED_KEYS" ]; then
+    echo "No duplicated keys at file ${file}"
+    continue
+  fi
+
+  echo "Found duplicated keys at ${file}"
+  
+  while read -r duplicatedKey; do
+    keyValue=$(echo "$duplicatedKey" | cut -d \" -f 2)
+    duplications=$(grep -n \""${keyValue}\"" "${FILE_PATH}")
+    
+    while read -r duplication; do
+      lineNumber=$(echo "$duplication" | cut -d : -f 1)
+      echo "${keyValue}" is duplicated at "$lineNumber"
+      echo "${FILE_PATH}:${lineNumber}:1: error: This key is duplicated somewhere else in the same file!"
+    done <<<"${duplications[@]}"
+
+  done <<<"$DUPLICATED_KEYS"
+
+done
